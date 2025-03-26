@@ -114,11 +114,24 @@ resource "azapi_update_resource" "aks_cluster_post_create" {
 }
 
 # required AVM resources interfaces
-resource "azurerm_management_lock" "this" {
+moved {
+  from = azurerm_management_lock.this
+  to   = azapi_resource.lock_this
+}
+
+resource "azapi_resource" "lock_this" {
   count = var.lock != null ? 1 : 0
 
-  lock_level = var.lock.kind
-  name       = coalesce(var.lock.name, "lock-${var.lock.kind}")
-  scope      = azurerm_kubernetes_cluster.this.id
-  notes      = var.lock.kind == "CanNotDelete" ? "Cannot delete the resource or its child resources." : "Cannot delete or modify the resource or its child resources."
+  type = "Microsoft.Authorization/locks@2020-05-01"
+  body = {
+    properties = {
+      level = var.lock.kind
+      notes = var.lock.kind == "CanNotDelete" ? "Cannot delete the resource or its child resources." : "Cannot delete or modify the resource or its child resources."
+    }
+  }
+  ignore_casing             = false
+  ignore_missing_property   = true
+  name                      = coalesce(var.lock.name, "lock-${var.lock.kind}")
+  parent_id                 = azurerm_kubernetes_cluster.this.id
+  schema_validation_enabled = true
 }
